@@ -14,7 +14,7 @@
             x:Name="textBox_DisplayKeyboardInput"
             HorizontalAlignment="Left" Margin="233,153,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="120"/>
         <Button Content="Button" HorizontalAlignment="Left" Margin="353,254,0,0" VerticalAlignment="Top"/>
-        <Label x:Name="BarcodeResultLabel" Content="Wating For Reading" HorizontalAlignment="Left" Margin="473,181,0,0" VerticalAlignment="Top"/>
+        <Label x:Name="BarcodeResultLabel" Content="Wating For Reading" HorizontalAlignment="Left" Margin="473,181,0,0" VerticalAlignment="Top" Width="238"/>
 
     </Grid>
 </Window>
