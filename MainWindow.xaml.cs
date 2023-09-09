@@ -14,6 +14,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using static System.Collections.Specialized.BitVector32;
 
 namespace BarcodeWPF
 {
@@ -34,11 +35,13 @@ namespace BarcodeWPF
             _listener.OnKeyPressed += _listener_OnKeyPressed;
 
             _listener.HookKeyboard();
+
         }
 
         void _listener_OnKeyPressed(object sender, KeyPressedArgs e)
         {
-           this.BarcodeResultLabel.Content = e.KeyPressed.ToString();
+            this.BarcodeResultLabel.Content = e.KeyPressed.ToString();
+
         }
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
@@ -78,6 +81,9 @@ namespace BarcodeWPF
         private LowLevelKeyboardProc _proc;
         private IntPtr _hookID = IntPtr.Zero;
 
+        DateTime _lastKeystroke = new DateTime(0);
+        List<string> _barcode = new List<string>();
+
         public LowLevelKeyboardListener()
         {
             _proc = HookCallback;
@@ -86,6 +92,10 @@ namespace BarcodeWPF
         public void HookKeyboard()
         {
             _hookID = SetHook(_proc);
+
+            _lastKeystroke = new DateTime(0);
+            _barcode = new List<string>();
+
         }
 
         public void UnHookKeyboard()
@@ -107,11 +117,44 @@ namespace BarcodeWPF
             if (nCode >= 0 && wParam == (IntPtr)WM_KEYDOWN || wParam == (IntPtr)WM_SYSKEYDOWN)
             {
                 int vkCode = Marshal.ReadInt32(lParam);
-
-
                 var key = KeyInterop.KeyFromVirtualKey(vkCode);
-                if (OnKeyPressed != null)
-                    OnKeyPressed(this, new KeyPressedArgs(key));
+
+
+                TimeSpan elapsed = (DateTime.Now - _lastKeystroke);
+
+                var afterLongTime = elapsed.TotalMilliseconds > 25;
+
+                if (afterLongTime)
+                {
+                    if (_barcode.Count > 9)
+                        Invoke();
+                    _barcode.Clear();
+                }
+
+
+                if (Keys.IsNumber.Any(x => x == (int)key))
+                    _barcode.Add(key.ToString().Replace("D",""));
+
+                if (Keys.IsAlpha.Any(x => x == (int)key))
+                    _barcode.Add(key.ToString());
+
+                _lastKeystroke = DateTime.Now;
+
+                if ((int)key == 6 && _barcode.Count > 9)
+                {
+                    Invoke();
+                    _barcode.Clear();
+                }
+
+
+
+                void Invoke()
+                {
+                    var f = string.Join("", _barcode.Select(x => x.Replace("D","")));
+                     if (OnKeyPressed != null)
+                        OnKeyPressed(this, new KeyPressedArgs(f));
+                }
+
             }
 
             return CallNextHookEx(_hookID, nCode, wParam, lParam);
@@ -120,11 +163,61 @@ namespace BarcodeWPF
 
     public class KeyPressedArgs : EventArgs
     {
-        public Key KeyPressed { get; private set; }
+        public string KeyPressed { get; private set; }
 
-        public KeyPressedArgs(Key key)
+        public KeyPressedArgs(string key)
         {
             KeyPressed = key;
         }
+    }
+
+
+    public class Keys
+    {
+        //public static List<int> IsValid = IsNumber.Concat(IsAlpha).ToList();
+        public static List<int> IsNumber = new List<int>
+        {
+            //numbers
+            34,
+            35,
+            36,
+            37,
+            38,
+            39,
+            40,
+            41,
+            42,
+            43,
+        };
+        public static List<int> IsAlpha = new List<int>
+        {
+            //Alpha
+            44,
+            45,
+            46,
+            47,
+            48,
+            49,
+            50,
+            51,
+            52,
+            53,
+            54,
+            55,
+            56,
+            57,
+            58,
+            59,
+            60,
+            61,
+            62,
+            63,
+            64,
+            65,
+            66,
+            67,
+            68,
+            69,
+        };
     }
 }
