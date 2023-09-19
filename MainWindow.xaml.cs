@@ -3,18 +3,11 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
-using static System.Collections.Specialized.BitVector32;
 
 namespace BarcodeWPF
 {
@@ -35,18 +28,29 @@ namespace BarcodeWPF
             _listener.OnKeyPressed += _listener_OnKeyPressed;
 
             _listener.HookKeyboard();
-
         }
 
         void _listener_OnKeyPressed(object sender, KeyPressedArgs e)
         {
             this.BarcodeResultLabel.Content = e.KeyPressed.ToString();
-
         }
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
             _listener.UnHookKeyboard();
+        }
+
+
+        public static IEnumerable<T> FindVisualChildren<T>(DependencyObject depObj) where T : DependencyObject
+        {
+            if (depObj == null) yield return (T)Enumerable.Empty<T>();
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(depObj); i++)
+            {
+                DependencyObject ithChild = VisualTreeHelper.GetChild(depObj, i);
+                if (ithChild == null) continue;
+                if (ithChild is T t) yield return t;
+                foreach (T childOfChild in FindVisualChildren<T>(ithChild)) yield return childOfChild;
+            }
         }
     }
 
@@ -133,7 +137,7 @@ namespace BarcodeWPF
 
 
                 if (Keys.IsNumber.Any(x => x == (int)key))
-                    _barcode.Add(key.ToString().Replace("D",""));
+                    _barcode.Add(key.ToString().Replace("D", ""));
 
                 if (Keys.IsAlpha.Any(x => x == (int)key))
                     _barcode.Add(key.ToString());
@@ -142,6 +146,7 @@ namespace BarcodeWPF
 
                 if ((int)key == 6 && _barcode.Count > 9)
                 {
+                    ControlTyping(true, string.Join("", _barcode));
                     Invoke();
                     _barcode.Clear();
                 }
@@ -150,14 +155,44 @@ namespace BarcodeWPF
 
                 void Invoke()
                 {
-                    var f = string.Join("", _barcode.Select(x => x.Replace("D","")));
-                     if (OnKeyPressed != null)
+                    var f = string.Join("", _barcode.Select(x => x.Replace("D", ""))) + Environment.NewLine;
+                    //f += Environment.NewLine;
+                    if (OnKeyPressed != null)
                         OnKeyPressed(this, new KeyPressedArgs(f));
+                }
+
+                void ControlTyping(bool status = false, string txt = "")
+                {
+                    var f = FocusManager.GetFocusedElement(Application.Current.Windows[0]);
+                    if (f is TextBox)
+                    {
+                        var t = (TextBox)f;
+                        if (status == true && txt.Length > 0)
+                        {
+                            t.Text = t.Text.Replace(txt, "");
+                            t.Select(t.Text.Length, 0);
+                        }
+                    }
                 }
 
             }
 
             return CallNextHookEx(_hookID, nCode, wParam, lParam);
+        }
+    }
+
+    public static class Ext
+    {
+        public static void SetText(this RichTextBox richTextBox, string text)
+        {
+            richTextBox.Document.Blocks.Clear();
+            richTextBox.Document.Blocks.Add(new Paragraph(new Run(text)));
+        }
+
+        public static string GetText(this RichTextBox richTextBox)
+        {
+            return new TextRange(richTextBox.Document.ContentStart,
+                richTextBox.Document.ContentEnd).Text;
         }
     }
 
